@@ -834,6 +834,9 @@ function sc(){
   eu.className='ei-val '+(utile>0?'ev-g':utile<0?'ev-r':'ev-0');
   document.getElementById('e-pax').textContent=fmtN(totalPax);
 
+  // save current date results
+  saveInputsForDate(currentDate);
+
   // calc all 3 dates for summary
   let tot3=0;
   DATES.forEach(d=>{
@@ -923,83 +926,54 @@ function sc(){
 /* SAVE / LOAD */
 function allFleetInputIds(){return['nCT','capCT','costCT','nST','capST','costST','nVN','capVN','costVN','nEX','capEX','costEX','g-pDL','g-pN1','g-pN2'];}
 
-const SUPABASE_URL='https://ihwtkzihqqefamhdcjix.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3RremlocXFlZmFtaGRjaml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDE0MTEsImV4cCI6MjEwMDM3NzQxMX0._jvd5EHZOGo2mpGdrbyjWpLL0xasj7GXHeWni3HjSvY';
-const SB_KEY='panorama_simulatore_v1';
+const SB_URL='https://ihwtkzihqqefamhdcjix.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3RremlocXFlZmFtaGRjaml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDE0MTEsImV4cCI6MjEwMDM3NzQxMX0._jvd5EHZOGo2mpGdrbyjWpLL0xasj7GXHeWni3HjSvY';
+const SB_DATA_KEY='panorama_v5';
 
-async function saveAll(){
+function saveAll(){
   const d={fleet:{},dates:{}};
   allFleetInputIds().forEach(k=>{const el=document.getElementById(k);if(el)d.fleet[k]=el.value;});
   saveInputsForDate(currentDate);
   DATES.forEach(dt=>{d.dates[dt]=JSON.parse(JSON.stringify(dateData[dt]||{}));});
   d.currentDate=currentDate;
-  try{
-    await fetch(`${SUPABASE_URL}/rest/v1/simulatore_dati`,{
-      method:'POST',
-      headers:{
-        'apikey':SUPABASE_KEY,
-        'Authorization':`Bearer ${SUPABASE_KEY}`,
-        'Content-Type':'application/json',
-        'Prefer':'resolution=merge-duplicates'
-      },
-      body:JSON.stringify({chiave:SB_KEY,valore:d,aggiornato_il:new Date().toISOString()})
-    });
-  }catch(e){console.warn('Supabase save failed:',e);}
-  const t=document.getElementById('saved-tag');
-  if(t){t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+  // Save to Supabase
+  fetch(`${SB_URL}/rest/v1/simulatore_dati`,{
+    method:'POST',
+    headers:{
+      'apikey':SB_ANON,
+      'Authorization':'Bearer '+SB_ANON,
+      'Content-Type':'application/json',
+      'Prefer':'resolution=merge-duplicates'
+    },
+    body:JSON.stringify({chiave:SB_DATA_KEY,valore:d,aggiornato_il:new Date().toISOString()})
+  }).catch(e=>console.warn('Save error:',e));
+  const t=document.getElementById('saved-tag');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-async function loadSaved(){
-  try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/simulatore_dati?chiave=eq.${SB_KEY}&select=valore`,{
-      headers:{
-        'apikey':SUPABASE_KEY,
-        'Authorization':`Bearer ${SUPABASE_KEY}`
-      }
-    });
-    if(!res.ok){console.warn('Supabase load HTTP error:',res.status);return;}
-    const rows=await res.json();
-    if(!rows||rows.length===0){console.log('No data in Supabase yet');return;}
+function loadSaved(){
+  return fetch(`${SB_URL}/rest/v1/simulatore_dati?chiave=eq.${SB_DATA_KEY}&select=valore`,{
+    headers:{
+      'apikey':SB_ANON,
+      'Authorization':'Bearer '+SB_ANON
+    }
+  })
+  .then(r=>r.json())
+  .then(rows=>{
+    if(!rows||rows.length===0)return;
     const d=rows[0].valore;
-    // Load fleet values
-    if(d.fleet){
-      Object.keys(d.fleet).forEach(k=>{
-        const el=document.getElementById(k);
-        if(el){
-          el.value=d.fleet[k];
-          // Update counter displays
-          const dp=document.getElementById(k+'-d');
-          if(dp)dp.textContent=d.fleet[k];
-        }
-      });
-    }
-    // Load date data
-    if(d.dates){
-      DATES.forEach(dt=>{
-        if(d.dates[dt] && Object.keys(d.dates[dt]).length>0){
-          Object.assign(dateData[dt],d.dates[dt]);
-        }
-      });
-    }
-    // Restore current date tab
-    if(d.currentDate){
-      currentDate=d.currentDate;
-      [1,2,3].forEach(i=>document.getElementById('tab-d'+i).classList.toggle('active',i===currentDate));
-    }
-    // Load inputs for current date
+    if(d.fleet){Object.keys(d.fleet).forEach(k=>{const el=document.getElementById(k);if(el){el.value=d.fleet[k];const dp=document.getElementById(k+'-d');if(dp)dp.textContent=d.fleet[k];}});}
+    if(d.dates){DATES.forEach(dt=>{if(d.dates[dt]&&Object.keys(d.dates[dt]).length>0)Object.assign(dateData[dt],d.dates[dt]);});}
+    if(d.currentDate){currentDate=d.currentDate;[1,2,3].forEach(i=>document.getElementById('tab-d'+i).classList.toggle('active',i===currentDate));}
     loadInputsForDate(currentDate);
-    console.log('Data loaded from Supabase OK');
-  }catch(e){
-    console.warn('Supabase load failed:',e);
-
-  }
+  })
+  .catch(e=>console.warn('Load error:',e));
 }
 
 function resetAll(){
   if(!confirm('Ripristinare tutti i valori predefiniti?'))return;
-  fetch(`${SUPABASE_URL}/rest/v1/simulatore_dati?chiave=eq.${SB_KEY}`,{
+  fetch(`${SB_URL}/rest/v1/simulatore_dati?chiave=eq.${SB_DATA_KEY}`,{
     method:'DELETE',
-    headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    headers:{'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON}
   }).then(()=>location.reload()).catch(()=>location.reload());
 }
 
@@ -1008,21 +982,7 @@ buildTable('CT',true);
 buildTable('ST',true);
 buildTable('VN',true);
 buildTable('EX',false);
-
-// Show loading state
-document.body.insertAdjacentHTML('beforeend', '<div id="loading-overlay" style="position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px"><div style="width:40px;height:40px;border:4px solid #e0e0ea;border-top-color:#2d3a8c;border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:13px;color:#5a5a7a;font-weight:600">Caricamento dati in corso...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
-
-loadSaved().then(()=>{
-  sc();
-  const ov = document.getElementById('loading-overlay');
-  if(ov) ov.remove();
-}).catch(()=>{
-  const ov = document.getElementById('loading-overlay');
-  if(ov) ov.remove();
-  _dataLoaded = true;
-  sc();
-});
-
+loadSaved().then(()=>sc());
 document.addEventListener('change',()=>{sc();});
 </script>
 </body>

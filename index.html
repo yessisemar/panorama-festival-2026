@@ -991,11 +991,10 @@ async function loadSaved(){
     }
     // Load inputs for current date
     loadInputsForDate(currentDate);
-    _dataLoaded = true;
     console.log('Data loaded from Supabase OK');
   }catch(e){
     console.warn('Supabase load failed:',e);
-    _dataLoaded = true;
+
   }
 }
 
@@ -1027,8 +1026,7 @@ loadSaved().then(()=>{
   sc();
 });
 
-let _dataLoaded = false;
-document.addEventListener('change',()=>{sc();if(_dataLoaded)saveAll();});
+document.addEventListener('change',()=>{sc();saveAll();});
 </script>
 </body>
 </html>

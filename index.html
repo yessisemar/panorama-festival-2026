@@ -834,9 +834,6 @@ function sc(){
   eu.className='ei-val '+(utile>0?'ev-g':utile<0?'ev-r':'ev-0');
   document.getElementById('e-pax').textContent=fmtN(totalPax);
 
-  // save current date results
-  saveInputsForDate(currentDate);
-
   // calc all 3 dates for summary
   let tot3=0;
   DATES.forEach(d=>{

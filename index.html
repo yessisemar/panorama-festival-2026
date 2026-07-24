@@ -934,20 +934,28 @@ function saveAll(){
   const headers={
     'apikey':SB_KEY_ANON,
     'Authorization':'Bearer '+SB_KEY_ANON,
-    'Content-Type':'application/json'
+    'Content-Type':'application/json',
+    'Prefer':'return=minimal'
   };
-  // First DELETE then INSERT to guarantee update
+  const payload=JSON.stringify({chiave:SB_DATA,valore:d,aggiornato_il:new Date().toISOString()});
+  // Try PATCH first (update), if 0 rows affected do POST (insert)
   fetch(SB_URL+'/rest/v1/simulatore_dati?chiave=eq.'+SB_DATA,{
-    method:'DELETE',headers:headers
-  }).then(()=>{
-    return fetch(SB_URL+'/rest/v1/simulatore_dati',{
-      method:'POST',
-      headers:headers,
-      body:JSON.stringify({chiave:SB_DATA,valore:d,aggiornato_il:new Date().toISOString()})
-    });
+    method:'PATCH',
+    headers:headers,
+    body:JSON.stringify({valore:d,aggiornato_il:new Date().toISOString()})
   }).then(r=>{
-    if(!r.ok) r.text().then(t=>console.error('Save error:',t));
-    else console.log('Saved OK');
+    if(r.status===200||r.status===204){
+      // Check if any rows were updated
+      return r.text().then(txt=>{
+        // PATCH returns 204 with no body when successful
+        // If no rows matched, do INSERT
+        return fetch(SB_URL+'/rest/v1/simulatore_dati',{
+          method:'POST',
+          headers:{...headers,'Prefer':'resolution=ignore-duplicates'},
+          body:payload
+        });
+      });
+    }
   }).catch(e=>console.error('Save failed:',e));
   const t=document.getElementById('saved-tag');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);
 }

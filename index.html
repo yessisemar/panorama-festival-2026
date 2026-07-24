@@ -443,7 +443,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 </div><!-- /main -->
 
 <script>
-const STORE='panorama_v5';
+const SB_URL='https://ihwtkzihqqefamhdcjix.supabase.co';
+const SB_KEY_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3RremlocXFlZmFtaGRjaml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDE0MTEsImV4cCI6MjEwMDM3NzQxMX0._jvd5EHZOGo2mpGdrbyjWpLL0xasj7GXHeWni3HjSvY';
+const SB_DATA='panorama_main';
 const DATES=[1,2,3];
 const DATE_LABELS=['14 Ago','15 Ago','16 Ago'];
 let currentDate=1;
@@ -834,9 +836,6 @@ function sc(){
   eu.className='ei-val '+(utile>0?'ev-g':utile<0?'ev-r':'ev-0');
   document.getElementById('e-pax').textContent=fmtN(totalPax);
 
-  // save current date results
-  saveInputsForDate(currentDate);
-
   // calc all 3 dates for summary
   let tot3=0;
   DATES.forEach(d=>{
@@ -926,43 +925,43 @@ function sc(){
 /* SAVE / LOAD */
 function allFleetInputIds(){return['nCT','capCT','costCT','nST','capST','costST','nVN','capVN','costVN','nEX','capEX','costEX','g-pDL','g-pN1','g-pN2'];}
 
-const SB_URL='https://ihwtkzihqqefamhdcjix.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3RremlocXFlZmFtaGRjaml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDE0MTEsImV4cCI6MjEwMDM3NzQxMX0._jvd5EHZOGo2mpGdrbyjWpLL0xasj7GXHeWni3HjSvY';
-const SB_DATA_KEY='panorama_v5';
-
 function saveAll(){
   const d={fleet:{},dates:{}};
   allFleetInputIds().forEach(k=>{const el=document.getElementById(k);if(el)d.fleet[k]=el.value;});
   saveInputsForDate(currentDate);
   DATES.forEach(dt=>{d.dates[dt]=JSON.parse(JSON.stringify(dateData[dt]||{}));});
   d.currentDate=currentDate;
-  // Save to Supabase
-  fetch(`${SB_URL}/rest/v1/simulatore_dati`,{
-    method:'POST',
-    headers:{
-      'apikey':SB_ANON,
-      'Authorization':'Bearer '+SB_ANON,
-      'Content-Type':'application/json',
-      'Prefer':'resolution=merge-duplicates'
-    },
-    body:JSON.stringify({chiave:SB_DATA_KEY,valore:d,aggiornato_il:new Date().toISOString()})
-  }).catch(e=>console.warn('Save error:',e));
+  const headers={
+    'apikey':SB_KEY_ANON,
+    'Authorization':'Bearer '+SB_KEY_ANON,
+    'Content-Type':'application/json'
+  };
+  // First DELETE then INSERT to guarantee update
+  fetch(SB_URL+'/rest/v1/simulatore_dati?chiave=eq.'+SB_DATA,{
+    method:'DELETE',headers:headers
+  }).then(()=>{
+    return fetch(SB_URL+'/rest/v1/simulatore_dati',{
+      method:'POST',
+      headers:headers,
+      body:JSON.stringify({chiave:SB_DATA,valore:d,aggiornato_il:new Date().toISOString()})
+    });
+  }).then(r=>{
+    if(!r.ok) r.text().then(t=>console.error('Save error:',t));
+    else console.log('Saved OK');
+  }).catch(e=>console.error('Save failed:',e));
   const t=document.getElementById('saved-tag');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);
 }
 
 function loadSaved(){
-  return fetch(`${SB_URL}/rest/v1/simulatore_dati?chiave=eq.${SB_DATA_KEY}&select=valore`,{
-    headers:{
-      'apikey':SB_ANON,
-      'Authorization':'Bearer '+SB_ANON
-    }
+  return fetch(SB_URL+'/rest/v1/simulatore_dati?chiave=eq.'+SB_DATA+'&select=valore',{
+    headers:{'apikey':SB_KEY_ANON,'Authorization':'Bearer '+SB_KEY_ANON}
   })
   .then(r=>r.json())
   .then(rows=>{
     if(!rows||rows.length===0)return;
     const d=rows[0].valore;
     if(d.fleet){Object.keys(d.fleet).forEach(k=>{const el=document.getElementById(k);if(el){el.value=d.fleet[k];const dp=document.getElementById(k+'-d');if(dp)dp.textContent=d.fleet[k];}});}
-    if(d.dates){DATES.forEach(dt=>{if(d.dates[dt]&&Object.keys(d.dates[dt]).length>0)Object.assign(dateData[dt],d.dates[dt]);});}
+    if(d.dates){DATES.forEach(dt=>{if(d.dates[dt]&&Object.keys(d.dates[dt]).length>0){Object.assign(dateData[dt],d.dates[dt]);}});}
     if(d.currentDate){currentDate=d.currentDate;[1,2,3].forEach(i=>document.getElementById('tab-d'+i).classList.toggle('active',i===currentDate));}
     loadInputsForDate(currentDate);
   })
@@ -971,10 +970,10 @@ function loadSaved(){
 
 function resetAll(){
   if(!confirm('Ripristinare tutti i valori predefiniti?'))return;
-  fetch(`${SB_URL}/rest/v1/simulatore_dati?chiave=eq.${SB_DATA_KEY}`,{
+  fetch(SB_URL+'/rest/v1/simulatore_dati?chiave=eq.'+SB_DATA,{
     method:'DELETE',
-    headers:{'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON}
-  }).then(()=>location.reload()).catch(()=>location.reload());
+    headers:{'apikey':SB_KEY_ANON,'Authorization':'Bearer '+SB_KEY_ANON}
+  }).finally(()=>location.reload());
 }
 
 // INIT
@@ -982,8 +981,8 @@ buildTable('CT',true);
 buildTable('ST',true);
 buildTable('VN',true);
 buildTable('EX',false);
-loadSaved().then(()=>sc());
-document.addEventListener('change',()=>{sc();});
+loadSaved().then(()=>sc()).catch(()=>sc());
+document.addEventListener('change',()=>sc());
 </script>
 </body>
 </html>

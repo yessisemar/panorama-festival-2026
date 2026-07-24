@@ -521,9 +521,18 @@ function saveInputsForDate(d){
 
 function loadInputsForDate(d){
   const dd=dateData[d];
+  const isEmpty=!dd||Object.keys(dd).length===0;
   allDateInputIds().forEach(id=>{
     const el=document.getElementById(id);
-    if(el) el.value=(dd[id]!==undefined?dd[id]:el.getAttribute('data-def')||'0');
+    if(!el)return;
+    if(isEmpty){
+      // Empty date: set prices to defaults, passengers to 0
+      const def=el.getAttribute('data-def')||'0';
+      // If it's a passenger input (id starts with 'pax'), set to 0
+      el.value=id.startsWith('pax')?'0':def;
+    } else {
+      el.value=(dd[id]!==undefined?dd[id]:el.getAttribute('data-def')||'0');
+    }
   });
 }
 
@@ -676,12 +685,22 @@ function setOcc(id,pct){
 }
 
 function calcDate(d){
-  // temporarily load date d's data for calculation
   const saved={};
   allDateInputIds().forEach(id=>{const el=document.getElementById(id);if(el)saved[id]=el.value;});
-  // load date d
+  // Load date d data - for empty dates, set ALL pax to 0
   const dd=dateData[d];
-  allDateInputIds().forEach(id=>{const el=document.getElementById(id);if(el&&dd[id]!==undefined)el.value=dd[id];});
+  const isEmpty=!dd||Object.keys(dd).length===0;
+  allDateInputIds().forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(isEmpty){
+      // Empty date: zero out passengers, keep prices at default
+      el.value=id.startsWith('pax')?'0':(el.getAttribute('data-def')||'0');
+    } else {
+      if(dd[id]!==undefined) el.value=dd[id];
+      else el.value=id.startsWith('pax')?'0':(el.getAttribute('data-def')||'0');
+    }
+  });
   const result=calcCurrent(false);
   // restore
   allDateInputIds().forEach(id=>{const el=document.getElementById(id);if(el&&saved[id]!==undefined)el.value=saved[id];});

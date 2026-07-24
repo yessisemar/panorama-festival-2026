@@ -222,8 +222,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
       16 Agosto 2026
       <span class="date-tab-sub">Ricavi: <span id="tab-ric-3">€0</span></span>
     </div>
+    <div class="date-tab" id="tab-d4" onclick="switchDate(4)">
+      17 Agosto 2026
+      <span class="date-tab-sub" style="color:#0a7a4a">Solo ritorno</span>
+    </div>
   </div>
-  <div class="date-total-badge">Totale 3 date: <span id="badge-tot3" style="font-family:'DM Mono',monospace">€0</span></div>
+  <div class="date-total-badge">Totale 4 date: <span id="badge-tot3" style="font-family:'DM Mono',monospace">€0</span></div>
 </div>
 
 <div class="main">
@@ -400,6 +404,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
           <div class="ds-cell" id="ds-dl-3">€0</div>
           <div class="ds-cell" id="ds-tot-3" style="color:var(--G);font-weight:700">€0</div>
         </div>
+        <div class="ds-row" id="ds-row-4">
+          <div class="ds-cell">17 Ago <span style="font-size:9px;color:var(--G)">(solo ritorno)</span></div>
+          <div class="ds-cell" id="ds-norm-4">€0</div>
+          <div class="ds-cell" id="ds-dl-4">€0</div>
+          <div class="ds-cell" id="ds-tot-4" style="color:var(--G);font-weight:700">€0</div>
+        </div>
         <div class="ds-row ds-tot-row">
           <div class="ds-cell">TOTALE</div>
           <div class="ds-cell" id="ds-norm-all">€0</div>
@@ -446,8 +456,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 const SB_URL='https://ihwtkzihqqefamhdcjix.supabase.co';
 const SB_KEY_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3RremlocXFlZmFtaGRjaml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDE0MTEsImV4cCI6MjEwMDM3NzQxMX0._jvd5EHZOGo2mpGdrbyjWpLL0xasj7GXHeWni3HjSvY';
 const SB_DATA='panorama_main';
-const DATES=[1,2,3];
-const DATE_LABELS=['14 Ago','15 Ago','16 Ago'];
+const DATES=[1,2,3,4];
+const DATE_LABELS=['14 Ago','15 Ago','16 Ago','17 Ago'];
+const RETURN_ONLY_DATES=[4];
 let currentDate=1;
 
 const IDA_H=[20,21,22,23,0,1];
@@ -464,18 +475,18 @@ function fmt(v){return'€'+v.toLocaleString('it-IT',{minimumFractionDigits:2,ma
 function fmtN(v){return v.toLocaleString('it-IT');}
 
 function switchDate(d){
-  // save current inputs
   saveInputsForDate(currentDate);
   currentDate=d;
-  [1,2,3].forEach(i=>{
-    document.getElementById('tab-d'+i).classList.toggle('active',i===d);
-  });
+  [1,2,3,4].forEach(i=>{const el=document.getElementById('tab-d'+i);if(el)el.classList.toggle('active',i===d);});
   loadInputsForDate(d);
+  // For date 4 (17 Aug) hide ida sections
+  const isReturnOnly=RETURN_ONLY_DATES.includes(d);
+  document.querySelectorAll('.ida-only-section').forEach(el=>{el.style.display=isReturnOnly?'none':'';});
   sc();
 }
 
 // per-date storage in memory
-const dateData={1:{},2:{},3:{}};
+const dateData={1:{},2:{},3:{},4:{}};
 
 function getInputIds(key,hasIda){
   const ids=[];
@@ -537,10 +548,10 @@ function buildTable(key,hasIda){
 
   if(hasIda){
     // 1. VENDITA NORMALE ANDATA
-    html+=`<tr class="row-section-head"><td colspan="7">&#9658; ANDATA &nbsp;—&nbsp; Prevendita entro 15 Luglio</td></tr>`;
+    html+=`<tr class="row-section-head ida-only-section"><td colspan="7">&#9658; ANDATA &nbsp;—&nbsp; Prevendita entro 15 Luglio</td></tr>`;
     IDA_H.forEach((h,i)=>{
       const hi=hid(h);
-      html+=`<tr class="row-norm-ida">
+      html+=`<tr class="row-norm-ida ida-only-section">
         <td class="td-label" style="color:var(--N)"> Normale</td>
         <td class="td-time">${IDA_TIMES[i]}</td>
         <td class="td-price"><input type="number" id="p${key}_ida_n_${hi}" value="${DEF_IDA_PRICES[i]}" data-def="${DEF_IDA_PRICES[i]}" min="0" step="0.5" onchange="sc()"> €</td>
@@ -552,10 +563,10 @@ function buildTable(key,hasIda){
     });
 
     // 2. PREVENDITA 15 LUGLIO ANDATA
-    html+=`<tr class="row-section-head"><td colspan="7">&#9658; ANDATA &nbsp;—&nbsp; Prevendita entro 15 Luglio (A+R incluso — €<span class="dl-price-lbl">15</span>)</td></tr>`;
+    html+=`<tr class="row-section-head ida-only-section"><td colspan="7">&#9658; ANDATA &nbsp;—&nbsp; Prevendita entro 15 Luglio (A+R incluso — €<span class="dl-price-lbl">15</span>)</td></tr>`;
     IDA_H.forEach((h,i)=>{
       const hi=hid(h);
-      html+=`<tr class="row-dl">
+      html+=`<tr class="row-dl ida-only-section">
         <td class="td-label" style="color:var(--A)"> Prevendita</td>
         <td class="td-time">${IDA_TIMES[i]}</td>
         <td class="td-price" style="font-size:11px;color:var(--A);padding:8px 6px">€<span class="dl-price-lbl">15</span> A+R</td>
@@ -580,13 +591,13 @@ function buildTable(key,hasIda){
       </tr>`;
     });
     // prevendita ritorno note
-    html+=`<tr style="background:var(--AL)"><td colspan="7" style="padding:7px 10px;font-size:11px;color:var(--A)"> <strong>Prevendita — Ritorno incluso:</strong> i passeggeri prevendita hanno già il ritorno pagato, vengono conteggiati automaticamente nella capienza ritorno.</td></tr>`;
+    html+=`<tr class="ida-only-section" style="background:var(--AL)"><td colspan="7" style="padding:7px 10px;font-size:11px;color:var(--A)"> <strong>Prevendita — Ritorno incluso:</strong> i passeggeri prevendita hanno già il ritorno pagato, vengono conteggiati automaticamente nella capienza ritorno.</td></tr>`;
 
     // 4.NOTTE DELL'EVENTO — BLOCCO SEPARATO
-    html+=`<tr class="row-section-night"><td colspan="7">&#9658; NOTTE DELL'EVENTO — Andata singolo €<span class="n1-price-lbl">15</span> · A+R €<span class="n2-price-lbl">20</span></td></tr>`;
+    html+=`<tr class="row-section-night ida-only-section"><td colspan="7">&#9658; NOTTE DELL'EVENTO — Andata singolo €<span class="n1-price-lbl">15</span> · A+R €<span class="n2-price-lbl">20</span></td></tr>`;
     IDA_H.forEach((h,i)=>{
       const hi=hid(h);
-      html+=`<tr class="row-night">
+      html+=`<tr class="row-night ida-only-section">
         <td class="td-label" style="color:var(--O)"> Singolo andata</td>
         <td class="td-time">${IDA_TIMES[i]}</td>
         <td class="td-price" style="font-size:11px;color:var(--O);padding:8px 6px">€<span class="n1-price-lbl">15</span></td>
@@ -595,7 +606,7 @@ function buildTable(key,hasIda){
         <td class="td-occ" id="occ${key}_ida_n1_${hi}"><span class="occ-pill occ-g">0%</span></td>
         <td class="td-ricavo" id="ric${key}_ida_n1_${hi}" style="color:var(--O)">€0,00</td>
       </tr>
-      <tr class="row-nightIV">
+      <tr class="row-nightIV ida-only-section">
         <td class="td-label" style="color:var(--M)"> A+R combinato</td>
         <td class="td-time">${IDA_TIMES[i]}</td>
         <td class="td-price" style="font-size:11px;color:var(--M);padding:8px 6px">€<span class="n2-price-lbl">20</span></td>
@@ -608,7 +619,7 @@ function buildTable(key,hasIda){
     // notte ritorno singolo
     html+=`<tr class="row-section-night"><td colspan="7">&#9668; NOTTE DELL'EVENTO — Ritorno singolo €<span class="n1-price-lbl">15</span></td></tr>`;
     RIT_H.forEach((rh,i)=>{
-      html+=`<tr class="row-night">
+      html+=`<tr class="row-night ida-only-section">
         <td class="td-label" style="color:var(--O)"> Singolo ritorno</td>
         <td class="td-time">${RIT_TIMES[i]}</td>
         <td class="td-price" style="font-size:11px;color:var(--O);padding:8px 6px">€<span class="n1-price-lbl">15</span></td>
@@ -635,7 +646,7 @@ function buildTable(key,hasIda){
     });
     html+=`<tr class="row-section-night"><td colspan="7">&#9668; NOTTE DELL'EVENTO — Ritorno singolo €<span class="n1-price-lbl">15</span></td></tr>`;
     RIT_H.forEach((rh,i)=>{
-      html+=`<tr class="row-night">
+      html+=`<tr class="row-night ida-only-section">
         <td class="td-label" style="color:var(--O)"> Singolo ritorno</td>
         <td class="td-time">${RIT_TIMES[i]}</td>
         <td class="td-price" style="font-size:11px;color:var(--O);padding:8px 6px">€<span class="n1-price-lbl">15</span></td>
@@ -836,15 +847,15 @@ function sc(){
   eu.className='ei-val '+(utile>0?'ev-g':utile<0?'ev-r':'ev-0');
   document.getElementById('e-pax').textContent=fmtN(totalPax);
 
-  // calc all 3 dates for summary
+  // calc all 4 dates for summary
   let tot3=0;
   DATES.forEach(d=>{
     const r=d===currentDate?res:calcDate(d);
     const tabRic=document.getElementById('tab-ric-'+d);
     if(tabRic)tabRic.textContent=fmt(r.ricTot);
-    document.getElementById('ds-norm-'+d).textContent=fmt(r.ricNorm);
-    document.getElementById('ds-dl-'+d).textContent=fmt(r.ricDL+r.ricNight);
-    document.getElementById('ds-tot-'+d).textContent=fmt(r.ricTot);
+    const dsNorm=document.getElementById('ds-norm-'+d);if(dsNorm)dsNorm.textContent=fmt(r.ricNorm);
+    const dsDl=document.getElementById('ds-dl-'+d);if(dsDl)dsDl.textContent=fmt(r.ricDL+r.ricNight);
+    const dsTot=document.getElementById('ds-tot-'+d);if(dsTot)dsTot.textContent=fmt(r.ricTot);
     tot3+=r.ricTot;
   });
   document.getElementById('e-tot3').textContent=fmt(tot3);
@@ -970,7 +981,7 @@ function loadSaved(){
     const d=rows[0].valore;
     if(d.fleet){Object.keys(d.fleet).forEach(k=>{const el=document.getElementById(k);if(el){el.value=d.fleet[k];const dp=document.getElementById(k+'-d');if(dp)dp.textContent=d.fleet[k];}});}
     if(d.dates){DATES.forEach(dt=>{if(d.dates[dt]&&Object.keys(d.dates[dt]).length>0){Object.assign(dateData[dt],d.dates[dt]);}});}
-    if(d.currentDate){currentDate=d.currentDate;[1,2,3].forEach(i=>document.getElementById('tab-d'+i).classList.toggle('active',i===currentDate));}
+    if(d.currentDate){currentDate=d.currentDate;[1,2,3,4].forEach(i=>{const el=document.getElementById('tab-d'+i);if(el)el.classList.toggle('active',i===currentDate);});}
     loadInputsForDate(currentDate);
   })
   .catch(e=>console.warn('Load error:',e));
